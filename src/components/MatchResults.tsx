@@ -109,7 +109,7 @@ const MatchResults = ({ candidates, jobDescription, onShortlist, onReject }: Mat
               <p className="text-2xl font-bold text-red-600">
                 {candidates.filter(c => c.matchScore < 60).length}
               </p>
-              <p className="text-sm text-gray-600">Poor Match (<60%)</p>
+              <p className="text-sm text-gray-600">Poor Match (&lt;60%)</p>
             </div>
             <div className="text-center">
               <p className="text-2xl font-bold text-blue-600">
