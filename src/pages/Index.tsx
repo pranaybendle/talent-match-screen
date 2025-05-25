@@ -1,55 +1,87 @@
 
 import { useState } from "react";
-import { Upload, FileText, Users, CheckCircle, Briefcase } from "lucide-react";
+import { Upload, FileText, Users, CheckCircle, Briefcase, LogOut } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import JobDescriptionUpload from "@/components/JobDescriptionUpload";
 import CVUpload from "@/components/CVUpload";
 import MatchResults from "@/components/MatchResults";
 import ShortlistView from "@/components/ShortlistView";
-import { Candidate, JobDescription } from "@/types/screening";
+import AuthPage from "@/components/auth/AuthPage";
+import { useAuth } from "@/hooks/useAuth";
+import { useJobDescriptions } from "@/hooks/useJobDescriptions";
+import { useCandidates } from "@/hooks/useCandidates";
 
 const Index = () => {
-  const [jobDescription, setJobDescription] = useState<JobDescription | null>(null);
-  const [candidates, setCandidates] = useState<Candidate[]>([]);
-  const [shortlistedCandidates, setShortlistedCandidates] = useState<Candidate[]>([]);
+  const { user, loading: authLoading, signOut } = useAuth();
+  const { jobDescriptions, createJobDescription } = useJobDescriptions();
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  const { candidates, updateCandidateStatus } = useCandidates(selectedJobId || undefined);
   const [activeTab, setActiveTab] = useState("upload-jd");
 
-  const handleJobDescriptionUpload = (jd: JobDescription) => {
-    setJobDescription(jd);
-    setActiveTab("upload-cvs");
+  const selectedJob = jobDescriptions.find(jd => jd.id === selectedJobId);
+  const shortlistedCandidates = candidates.filter(c => c.status === "shortlisted");
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <AuthPage />;
+  }
+
+  const handleJobDescriptionUpload = async (jobData: any) => {
+    try {
+      const newJob = await createJobDescription({
+        title: jobData.title,
+        company: jobData.company,
+        content: jobData.content,
+        required_skills: jobData.requiredSkills || [],
+        experience: jobData.experience,
+        location: jobData.location,
+      });
+      setSelectedJobId(newJob.id);
+      setActiveTab("upload-cvs");
+    } catch (error) {
+      console.error("Error creating job description:", error);
+    }
   };
 
-  const handleCVsUploaded = (uploadedCandidates: Candidate[]) => {
-    setCandidates(uploadedCandidates);
+  const handleCVsUploaded = (uploadedCandidates: any[]) => {
     setActiveTab("matches");
   };
 
-  const handleShortlist = (candidate: Candidate) => {
-    const updatedCandidate = { ...candidate, status: "shortlisted" as const };
-    setCandidates(prev => 
-      prev.map(c => c.id === candidate.id ? updatedCandidate : c)
-    );
-    setShortlistedCandidates(prev => [...prev, updatedCandidate]);
+  const handleShortlist = async (candidate: any) => {
+    try {
+      await updateCandidateStatus(candidate.id, "shortlisted");
+    } catch (error) {
+      console.error("Error shortlisting candidate:", error);
+    }
   };
 
-  const handleReject = (candidate: Candidate) => {
-    const updatedCandidate = { ...candidate, status: "rejected" as const };
-    setCandidates(prev => 
-      prev.map(c => c.id === candidate.id ? updatedCandidate : c)
-    );
-    setShortlistedCandidates(prev => 
-      prev.filter(c => c.id !== candidate.id)
-    );
+  const handleReject = async (candidate: any) => {
+    try {
+      await updateCandidateStatus(candidate.id, "rejected");
+    } catch (error) {
+      console.error("Error rejecting candidate:", error);
+    }
   };
 
   const stats = [
     {
       title: "Job Description",
-      value: jobDescription ? "Uploaded" : "Pending",
+      value: selectedJob ? "Selected" : "None",
       icon: Briefcase,
-      status: jobDescription ? "complete" : "pending"
+      status: selectedJob ? "complete" : "pending"
     },
     {
       title: "CVs Uploaded",
@@ -77,12 +109,18 @@ const Index = () => {
               </div>
               <div>
                 <h1 className="text-xl font-bold text-gray-900">AI Job Screener</h1>
-                <p className="text-sm text-gray-500">Intelligent Candidate Matching</p>
+                <p className="text-sm text-gray-500">Welcome, {user.email}</p>
               </div>
             </div>
-            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-              Multi-Agent AI System
-            </Badge>
+            <div className="flex items-center space-x-4">
+              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                Multi-Agent AI System
+              </Badge>
+              <Button variant="outline" onClick={signOut} className="flex items-center gap-2">
+                <LogOut className="h-4 w-4" />
+                Sign Out
+              </Button>
+            </div>
           </div>
         </div>
       </header>
@@ -144,12 +182,20 @@ const Index = () => {
               </TabsList>
 
               <TabsContent value="upload-jd" className="space-y-6">
-                <JobDescriptionUpload onUpload={handleJobDescriptionUpload} />
+                <JobDescriptionUpload 
+                  onUpload={handleJobDescriptionUpload}
+                  existingJobs={jobDescriptions}
+                  selectedJob={selectedJob}
+                  onSelectJob={(job) => {
+                    setSelectedJobId(job.id);
+                    setActiveTab("upload-cvs");
+                  }}
+                />
               </TabsContent>
 
               <TabsContent value="upload-cvs" className="space-y-6">
                 <CVUpload 
-                  jobDescription={jobDescription}
+                  jobDescription={selectedJob}
                   onCVsUploaded={handleCVsUploaded}
                 />
               </TabsContent>
@@ -157,7 +203,7 @@ const Index = () => {
               <TabsContent value="matches" className="space-y-6">
                 <MatchResults 
                   candidates={candidates}
-                  jobDescription={jobDescription}
+                  jobDescription={selectedJob}
                   onShortlist={handleShortlist}
                   onReject={handleReject}
                 />
@@ -166,7 +212,7 @@ const Index = () => {
               <TabsContent value="shortlist" className="space-y-6">
                 <ShortlistView 
                   shortlistedCandidates={shortlistedCandidates}
-                  jobDescription={jobDescription}
+                  jobDescription={selectedJob}
                 />
               </TabsContent>
             </Tabs>
