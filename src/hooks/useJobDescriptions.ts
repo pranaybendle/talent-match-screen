@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 
 export interface JobDescription {
   id: string;
@@ -19,6 +20,7 @@ export const useJobDescriptions = () => {
   const [jobDescriptions, setJobDescriptions] = useState<JobDescription[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const fetchJobDescriptions = async () => {
     try {
@@ -41,10 +43,22 @@ export const useJobDescriptions = () => {
   };
 
   const createJobDescription = async (jobData: Omit<JobDescription, "id" | "created_at" | "updated_at">) => {
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in to create job descriptions.",
+        variant: "destructive",
+      });
+      throw new Error("User not authenticated");
+    }
+
     try {
       const { data, error } = await supabase
         .from("job_descriptions")
-        .insert([jobData])
+        .insert([{
+          ...jobData,
+          user_id: user.id
+        }])
         .select()
         .single();
 

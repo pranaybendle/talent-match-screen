@@ -76,6 +76,24 @@ const Index = () => {
     }
   };
 
+  // Convert database types to component types
+  const convertJobForComponent = (job: any) => ({
+    ...job,
+    requiredSkills: job.required_skills || [],
+    uploadedAt: new Date(job.created_at)
+  });
+
+  const convertCandidatesForComponent = (candidates: any[]) => 
+    candidates.map(candidate => ({
+      ...candidate,
+      fileName: candidate.file_name,
+      fileSize: candidate.file_size,
+      matchScore: candidate.match_score,
+      matchedSkills: candidate.matched_skills || [],
+      missingSkills: candidate.missing_skills || [],
+      uploadedAt: new Date(candidate.created_at)
+    }));
+
   const stats = [
     {
       title: "Job Description",
@@ -195,15 +213,15 @@ const Index = () => {
 
               <TabsContent value="upload-cvs" className="space-y-6">
                 <CVUpload 
-                  jobDescription={selectedJob}
+                  jobDescription={selectedJob ? convertJobForComponent(selectedJob) : undefined}
                   onCVsUploaded={handleCVsUploaded}
                 />
               </TabsContent>
 
               <TabsContent value="matches" className="space-y-6">
                 <MatchResults 
-                  candidates={candidates}
-                  jobDescription={selectedJob}
+                  candidates={convertCandidatesForComponent(candidates)}
+                  jobDescription={selectedJob ? convertJobForComponent(selectedJob) : undefined}
                   onShortlist={handleShortlist}
                   onReject={handleReject}
                 />
@@ -211,8 +229,8 @@ const Index = () => {
 
               <TabsContent value="shortlist" className="space-y-6">
                 <ShortlistView 
-                  shortlistedCandidates={shortlistedCandidates}
-                  jobDescription={selectedJob}
+                  shortlistedCandidates={convertCandidatesForComponent(shortlistedCandidates)}
+                  jobDescription={selectedJob ? convertJobForComponent(selectedJob) : undefined}
                 />
               </TabsContent>
             </Tabs>
