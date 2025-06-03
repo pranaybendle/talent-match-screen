@@ -23,15 +23,24 @@ export const useJobDescriptions = () => {
   const { user } = useAuth();
 
   const fetchJobDescriptions = async () => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+
     try {
+      console.log('Fetching job descriptions for user:', user.id);
       const { data, error } = await supabase
         .from("job_descriptions")
         .select("*")
+        .eq("user_id", user.id)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
+      console.log('Fetched job descriptions:', data);
       setJobDescriptions(data || []);
     } catch (error: any) {
+      console.error('Error fetching job descriptions:', error);
       toast({
         title: "Error fetching job descriptions",
         description: error.message,
@@ -53,6 +62,7 @@ export const useJobDescriptions = () => {
     }
 
     try {
+      console.log('Creating job description:', jobData);
       const { data, error } = await supabase
         .from("job_descriptions")
         .insert([{
@@ -64,6 +74,7 @@ export const useJobDescriptions = () => {
 
       if (error) throw error;
 
+      console.log('Created job description:', data);
       setJobDescriptions(prev => [data, ...prev]);
       toast({
         title: "Job description created",
@@ -72,6 +83,7 @@ export const useJobDescriptions = () => {
 
       return data;
     } catch (error: any) {
+      console.error('Error creating job description:', error);
       toast({
         title: "Error creating job description",
         description: error.message,
@@ -83,7 +95,7 @@ export const useJobDescriptions = () => {
 
   useEffect(() => {
     fetchJobDescriptions();
-  }, []);
+  }, [user]);
 
   return {
     jobDescriptions,

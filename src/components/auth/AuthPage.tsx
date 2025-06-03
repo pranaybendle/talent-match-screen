@@ -28,6 +28,7 @@ const AuthPage = () => {
           data: {
             full_name: fullName,
           },
+          emailRedirectTo: `${window.location.origin}/`,
         },
       });
 
@@ -36,8 +37,12 @@ const AuthPage = () => {
       if (data.user) {
         toast({
           title: "Account created successfully!",
-          description: "You can now sign in to your account.",
+          description: "Please check your email to confirm your account, then you can sign in.",
         });
+        // Clear the form
+        setEmail("");
+        setPassword("");
+        setFullName("");
       }
     } catch (error: any) {
       toast({
@@ -67,11 +72,25 @@ const AuthPage = () => {
           title: "Welcome back!",
           description: "You have been signed in successfully.",
         });
+        // Clear the form
+        setEmail("");
+        setPassword("");
       }
     } catch (error: any) {
+      let errorMessage = error.message;
+      
+      // Provide more user-friendly error messages
+      if (error.message.includes("Invalid login credentials")) {
+        errorMessage = "Invalid email or password. Please check your credentials and try again.";
+      } else if (error.message.includes("Email not confirmed")) {
+        errorMessage = "Please check your email and click the confirmation link before signing in.";
+      } else if (error.message.includes("User not found")) {
+        errorMessage = "No account found with this email address. Please sign up first.";
+      }
+
       toast({
         title: "Sign in failed",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -117,6 +136,7 @@ const AuthPage = () => {
                       onChange={(e) => setEmail(e.target.value)}
                       className="pl-10"
                       required
+                      disabled={loading}
                     />
                   </div>
                 </div>
@@ -132,6 +152,8 @@ const AuthPage = () => {
                       onChange={(e) => setPassword(e.target.value)}
                       className="pl-10"
                       required
+                      disabled={loading}
+                      minLength={6}
                     />
                   </div>
                 </div>
@@ -159,6 +181,7 @@ const AuthPage = () => {
                       onChange={(e) => setFullName(e.target.value)}
                       className="pl-10"
                       required
+                      disabled={loading}
                     />
                   </div>
                 </div>
@@ -174,6 +197,7 @@ const AuthPage = () => {
                       onChange={(e) => setEmail(e.target.value)}
                       className="pl-10"
                       required
+                      disabled={loading}
                     />
                   </div>
                 </div>
@@ -184,11 +208,12 @@ const AuthPage = () => {
                     <Input
                       id="signup-password"
                       type="password"
-                      placeholder="Create a password"
+                      placeholder="Create a password (min 6 characters)"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       className="pl-10"
                       required
+                      disabled={loading}
                       minLength={6}
                     />
                   </div>

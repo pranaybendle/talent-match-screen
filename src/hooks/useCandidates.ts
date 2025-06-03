@@ -29,16 +29,18 @@ export const useCandidates = (jobDescriptionId?: string) => {
   const { user } = useAuth();
 
   const fetchCandidates = async () => {
-    if (!jobDescriptionId) {
+    if (!jobDescriptionId || !user) {
       setLoading(false);
       return;
     }
 
     try {
+      console.log('Fetching candidates for job:', jobDescriptionId);
       const { data, error } = await supabase
         .from("candidates")
         .select("*")
         .eq("job_description_id", jobDescriptionId)
+        .eq("user_id", user.id)
         .order("match_score", { ascending: false });
 
       if (error) throw error;
@@ -49,8 +51,10 @@ export const useCandidates = (jobDescriptionId?: string) => {
         status: candidate.status as "pending" | "shortlisted" | "rejected" | "invited"
       }));
       
+      console.log('Fetched candidates:', typedData);
       setCandidates(typedData);
     } catch (error: any) {
+      console.error('Error fetching candidates:', error);
       toast({
         title: "Error fetching candidates",
         description: error.message,
@@ -72,6 +76,7 @@ export const useCandidates = (jobDescriptionId?: string) => {
     }
 
     try {
+      console.log('Creating candidate:', candidateData);
       const { data, error } = await supabase
         .from("candidates")
         .insert([{
@@ -88,9 +93,11 @@ export const useCandidates = (jobDescriptionId?: string) => {
         status: data.status as "pending" | "shortlisted" | "rejected" | "invited"
       };
 
+      console.log('Created candidate:', typedData);
       setCandidates(prev => [...prev, typedData]);
       return typedData;
     } catch (error: any) {
+      console.error('Error creating candidate:', error);
       toast({
         title: "Error creating candidate",
         description: error.message,
@@ -102,10 +109,12 @@ export const useCandidates = (jobDescriptionId?: string) => {
 
   const updateCandidateStatus = async (candidateId: string, status: Candidate["status"]) => {
     try {
+      console.log('Updating candidate status:', candidateId, status);
       const { data, error } = await supabase
         .from("candidates")
         .update({ status })
         .eq("id", candidateId)
+        .eq("user_id", user?.id)
         .select()
         .single();
 
@@ -116,12 +125,19 @@ export const useCandidates = (jobDescriptionId?: string) => {
         status: data.status as "pending" | "shortlisted" | "rejected" | "invited"
       };
 
+      console.log('Updated candidate:', typedData);
       setCandidates(prev => 
         prev.map(c => c.id === candidateId ? { ...c, status } : c)
       );
 
+      toast({
+        title: "Status updated",
+        description: `Candidate has been ${status}.`,
+      });
+
       return typedData;
     } catch (error: any) {
+      console.error('Error updating candidate status:', error);
       toast({
         title: "Error updating candidate status",
         description: error.message,
@@ -133,7 +149,7 @@ export const useCandidates = (jobDescriptionId?: string) => {
 
   useEffect(() => {
     fetchCandidates();
-  }, [jobDescriptionId]);
+  }, [jobDescriptionId, user]);
 
   return {
     candidates,
